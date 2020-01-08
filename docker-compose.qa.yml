@@ -1,0 +1,6 @@
+version: "2.1"
+services:
+  app:
+    ports:
+      - 9000
+    command: ["npm", "run", "start"]

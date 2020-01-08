@@ -1,0 +1,10 @@
+version: "2.1"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+      args:
+        PACKAGE_PATH: .
+        WORKING_DIR: /src
+    command: ["npm", "run", "dev"]
