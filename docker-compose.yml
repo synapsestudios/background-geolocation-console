@@ -1,10 +1,14 @@
 version: "2.1"
 services:
   app:
+    ports:
+      - "9000:9000"
     build:
       context: .
       dockerfile: Dockerfile.node
       args:
         PACKAGE_PATH: .
         WORKING_DIR: /src
-    command: ["npm", "run", "dev"]
+    env_file:
+      - ../background-geolocation-console-secrets.env
+    command: ["npm", "start"]

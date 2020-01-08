@@ -3,4 +3,6 @@ services:
   app:
     ports:
       - 9000
-    command: ["npm", "run", "start"]
+    env_file:
+      - ../background-geolocation-console-secrets.env
+    command: ["npm", "start"]

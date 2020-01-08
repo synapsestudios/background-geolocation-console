@@ -6,8 +6,9 @@ ARG WORKING_DIR=/src
 WORKDIR $WORKING_DIR
 COPY $PACKAGE_PATH/package.json $WORKING_DIR/package.json
 RUN npm install
+RUN npm run build
 
 COPY $PACKAGE_PATH $WORKING_DIR
 
 VOLUME $WORKING_DIR/node_modules
-CMD [ "npm", "run", "dev" ]
+CMD [ "npm", "start" ]
