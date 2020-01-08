@@ -1,6 +1,7 @@
 version: "2.1"
 services:
   app:
+    container_name: app
     ports:
       - "9000:9000"
     build:
