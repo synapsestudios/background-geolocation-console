@@ -1,20 +1,11 @@
 import fs from 'fs';
 import { Router } from 'express';
 import { isEncryptedRequest, decrypt } from '../libs/RNCrypto';
-import {
-  AccessDeniedError,
-  isDDosCompany,
-  return1Gbfile,
-} from '../libs/utils';
+import { AccessDeniedError, isDDosCompany, return1Gbfile, extractLinesFromGzFile } from '../libs/utils';
 import { getDevices, deleteDevice } from '../models/Device';
+import { bulkCreateLogs, getLogBatchDates, getLogs, deleteLogs } from '../models/Log';
 import { getOrgs } from '../models/Org';
-import {
-  createLocation,
-  deleteLocations,
-  getLatestLocation,
-  getLocations,
-  getStats,
-} from '../models/Location';
+import { createLocation, deleteLocations, getLatestLocation, getLocations, getStats } from '../models/Location';
 
 const router = new Router();
 
@@ -96,10 +87,8 @@ router.get('/locations', async function (req, res) {
  */
 router.post('/locations', async function (req, res) {
   const { body } = req;
-  const data = isEncryptedRequest(req)
-    ? decrypt(body.toString())
-    : body;
-  const locations = Array.isArray(data) ? data : (data ? [data] : []);
+  const data = isEncryptedRequest(req) ? decrypt(body.toString()) : body;
+  const locations = Array.isArray(data) ? data : data ? [data] : [];
 
   if (locations.find(({ company_token: org }) => isDDosCompany(org))) {
     return return1Gbfile(res);
@@ -123,16 +112,13 @@ router.post('/locations', async function (req, res) {
 router.post('/locations/:company_token', async function (req, res) {
   const { company_token: org } = req.params;
 
-  console.info(
-    'locations:post'.green,
-    'org:name'.green, org,
-  );
+  console.info('locations:post'.green, 'org:name'.green, org);
 
   if (isDDosCompany(org)) {
     return return1Gbfile(res);
   }
 
-  const data = (isEncryptedRequest(req)) ? decrypt(req.body.toString()) : req.body;
+  const data = isEncryptedRequest(req) ? decrypt(req.body.toString()) : req.body;
   data.company_token = org;
 
   try {
@@ -188,6 +174,91 @@ router.get('/data/city_drive', async function (req, res) {
   fs.readFile('./data/city_drive.json', 'utf8', function (_err, data) {
     res.send(data);
   });
+});
+
+/**
+ * GET Logs
+ */
+router.get('/log_batches', async function (req, res) {
+  try {
+    const logBatchDates = await getLogBatchDates();
+    res.send(logBatchDates);
+  } catch (err) {
+    console.info('GET /log_batches', err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+router.get('/batch_logs', async function (req, res) {
+  const { uploaded_at } = req.query;
+  if (!uploaded_at) {
+    console.info('GET /logs', 'Must provide `uploaded_at` date');
+    res.status(500).send({ error: 'Must provide `uploaded_at` date' });
+  }
+  try {
+    const logBatchDates = await getLogs(uploaded_at);
+    res.send(logBatchDates);
+  } catch (err) {
+    console.info('GET /log_batches', err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+router.delete('/logs', async function (req, res) {
+  const { uploaded_at } = req.query;
+  if (!uploaded_at) {
+    console.info('DELETE /logs', 'Must provide `uploaded_at` date');
+    res.status(500).send({ error: 'Must provide `uploaded_at` date' });
+  }
+  try {
+    await deleteLogs(uploaded_at);
+    res.send({ success: true });
+  } catch (err) {
+    console.info('GET /log_batches', err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+/**
+ * POST Logs
+ */
+router.post('/logs', async function (req, res) {
+  try {
+    const onEntriesExtracted = new Promise((resolve, reject) => {
+      req.busboy.on('file', async (fieldname, file, filename) => {
+        console.log('[ file ]:', filename);
+        const entries = await extractLinesFromGzFile(file);
+        console.log('Extracted ', entries.length, ' lines');
+        resolve(entries);
+      });
+    });
+
+    const onMetaDataExtracted = new Promise((resolve, reject) => {
+      let metaData;
+      req.busboy.on('field', (key, value) => {
+        console.log('[', key, ']:', value);
+        metaData = {
+          ...metaData,
+          [key]: value,
+        };
+      });
+      req.busboy.on('finish', async () => {
+        console.log('Finshed Parsing');
+        resolve(metaData);
+      });
+    });
+
+    Promise.all([onEntriesExtracted, onMetaDataExtracted]).then(async ([entries, metaData]) => {
+      await bulkCreateLogs(entries, metaData);
+      console.log('Saved ', entries.length, ' log entries.');
+      res.send({ success: true });
+    });
+
+    req.pipe(req.busboy);
+  } catch (err) {
+    console.error('post /logs', err);
+    res.status(500).send({ error: 'Something failed!' });
+  }
 });
 
 export default router;

@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
 import store from './store';
 import WrappedViewport from './components/WrappedViewport';
+import LogView from './components/LogView';
 
 // Detect users incorrectly hitting /locations/username instead of /username.
 // It seems people think because the plugin is POSTing -> /location/username that they must
@@ -33,6 +34,7 @@ const render = () => {
       <Provider store={store}>
         <Router>
           <Switch>
+            <Route path='/logs' component={LogView} />
             <Route path='/:token' component={WrappedViewport} />
             <Route path='/' component={WrappedViewport} />
           </Switch>

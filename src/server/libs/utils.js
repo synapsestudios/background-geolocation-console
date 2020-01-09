@@ -1,4 +1,6 @@
 import { createReadStream } from 'fs';
+import readline from 'readline';
+import zlib from 'zlib';
 import { resolve } from 'path';
 import { verify } from './jwt';
 
@@ -18,19 +20,17 @@ export const isProduction = process.env.NODE_ENV === 'production';
 export const isPostgres = !!process.env.DATABASE_URL;
 export const desc = isPostgres ? 'DESC NULLS LAST' : 'DESC';
 
-const check = (list, item) => list
-  .find(x => !!x && (item || '').toLowerCase().startsWith(x.toLowerCase()));
+const check = (list, item) => list.find(x => !!x && (item || '').toLowerCase().startsWith(x.toLowerCase()));
 export const isDDosCompany = orgToken => check(ddosBombCompanies, orgToken);
 export const isDeniedCompany = orgToken => check(deniedCompanies, orgToken);
 export const isDeniedDevice = orgToken => check(deniedDevices, orgToken);
-export const isAdmin = orgToken => !!filterByCompany &
-  !!process.env.ADMIN_TOKEN &&
-  orgToken === process.env.ADMIN_TOKEN;
+export const isAdmin = orgToken =>
+  !!filterByCompany & !!process.env.ADMIN_TOKEN && orgToken === process.env.ADMIN_TOKEN;
 
-export const jsonb = data => isPostgres ? (data || null) : JSON.stringify(data);
+export const jsonb = data => (isPostgres ? data || null : JSON.stringify(data));
 
-export class AccessDeniedError extends Error {};
-export class RegistrationRequiredError extends Error {};
+export class AccessDeniedError extends Error {}
+export class RegistrationRequiredError extends Error {}
 
 export const raiseError = (res, message, error) => {
   const result = new AccessDeniedError(message);
@@ -64,13 +64,7 @@ export function hydrate (row) {
     ...record,
     uuid: data.uuid,
   };
-  [
-    'data',
-    'device',
-    'activity',
-    'battery',
-    'coords',
-  ].forEach(x => delete result[x]);
+  ['data', 'device', 'activity', 'battery', 'coords'].forEach(x => delete result[x]);
 
   return result;
 }
@@ -113,16 +107,32 @@ export const checkCompany = ({ org, model }) => {
   if (isDeniedCompany(org)) {
     throw new AccessDeniedError(
       'This is a question from the CEO of Transistor Software.\n' +
-      'Why are you spamming my demo server1/v2?\n' +
-      'Please email me at chris@transistorsoft.com.'
+        'Why are you spamming my demo server1/v2?\n' +
+        'Please email me at chris@transistorsoft.com.'
     );
   }
 
   if (isDeniedDevice(model)) {
     throw new AccessDeniedError(
       'This is a question from the CEO of Transistor Software.\n' +
-      'Why are you spamming my demo server2/v2?\n' +
-      'Please email me at chris@transistorsoft.com.'
+        'Why are you spamming my demo server2/v2?\n' +
+        'Please email me at chris@transistorsoft.com.'
     );
   }
+};
+
+export const extractLinesFromGzFile = async gzFile => {
+  return new Promise((resolve, reject) => {
+    const entries = [];
+    const gunzip = zlib.createGunzip();
+    const rli = readline.createInterface({ input: gunzip });
+    rli.on('line', line => {
+      if (line) {
+        entries.push(line);
+      }
+    });
+    rli.on('close', () => resolve(entries));
+    gzFile.on('data', data => gunzip.write(data));
+    gzFile.on('end', () => gunzip.end());
+  });
 };

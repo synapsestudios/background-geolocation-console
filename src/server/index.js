@@ -1,6 +1,7 @@
 import initializeDatabase from './database/initializeDatabase';
 import express from 'express';
 import morgan from 'morgan';
+import busboy from 'connect-busboy';
 import bodyParser from 'body-parser';
 import { resolve, extname } from 'path';
 import compress from 'compression';
@@ -19,21 +20,20 @@ const app = express();
 const buildPath = resolve(__dirname, '..', '..', 'build');
 const parserLimits = { limit: parserLimit, extended: true };
 
-process
-  .on('uncaughtException', (err) => {
-    // eslint-disable-next-line no-console
-    console.error('<!> Exception %s: ', err.message, err.stack);
-  });
+process.on('uncaughtException', err => {
+  // eslint-disable-next-line no-console
+  console.error('<!> Exception %s: ', err.message, err.stack);
+});
 
-process
-  .on('message', (msg) => {
-    // eslint-disable-next-line no-console
-    console.log('Server %s process.on( message = %s )', msg);
-  });
+process.on('message', msg => {
+  // eslint-disable-next-line no-console
+  console.log('Server %s process.on( message = %s )', msg);
+});
 
 app.disable('etag');
 app.use(morgan(isProduction ? 'short' : 'dev'));
 app.use(compress());
+app.use(busboy());
 app.use(bodyParser.json(parserLimits));
 app.use(bodyParser.raw(parserLimits));
 
@@ -69,8 +69,7 @@ app.use(bodyParser.raw(parserLimits));
 
     // Spawning dedicated process on opened port.. only if not deployed on heroku
     if (!dyno) {
-      opn(`http://localhost:8080`)
-        .catch(error => console.error('Optional site open failed:', error));
+      opn(`http://localhost:8080`).catch(error => console.error('Optional site open failed:', error));
     }
   });
 })();
