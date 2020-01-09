@@ -61,7 +61,9 @@ export default function LogView () {
 
   return (
     <div>
-      <h1>Log Viewer</h1>
+      <h1>
+        Log Viewer <a href='/'>(Go to Map)</a>
+      </h1>
       <div className='pane left'>
         <UploadDates
           uploadDates={uploadDates}
