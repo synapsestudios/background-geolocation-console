@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint src/ && flow",
-    "build": "NODE_ENV=production webpack",
+    "build": "NODE_ENV=production GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY webpack",
     "start": "better-npm-run start",
     "dev": "better-npm-run dev",
     "test": "jest",
@@ -28,7 +28,7 @@
       }
     },
     "start": {
-      "command": "node ./bin/server.js",
+      "command": "npm run build && node ./bin/server.js",
       "env": {
         "TZ": "UTC",
         "NODE_PATH": "./src/server/",
