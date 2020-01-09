@@ -1,0 +1,6 @@
+version: "2.1"
+services:
+  app:
+    volumes:
+      - .:/src
+      - /src/api/node_modules
